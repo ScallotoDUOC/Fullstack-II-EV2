@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Consulta el estado de tus reservas y pagos.">
+  <title>Mis reservas | JuegaYa</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%236c4cff'/%3E%3Cpath d='M18 38c0-10 6-17 14-17s14 7 14 17c0 7-5 9-9 4l-3-4h-4l-3 4c-4 5-9 3-9-4Z' fill='white'/%3E%3Ccircle cx='26' cy='31' r='2' fill='%236c4cff'/%3E%3Cpath d='M39 29v5m-2.5-2.5h5' stroke='%236c4cff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top border-bottom">
+    <div class="container py-2">
+      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="catalogo.html#inicio">
+        <span class="brand-mark"><i class="bi bi-controller"></i></span>JuegaYa
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal" aria-controls="menuPrincipal" aria-expanded="false" aria-label="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="menuPrincipal">
+        <ul class="navbar-nav ms-auto me-lg-3 gap-lg-2">
+          <li class="nav-item"><a class="nav-link" href="iniciar-sesion.html">Iniciar sesión</a></li>
+          <li class="nav-item"><a class="nav-link" href="crear-cuenta.html">Crear cuenta</a></li>
+          <li class="nav-item"><a class="nav-link" href="catalogo.html#catalogo">Catálogo</a></li>
+          <li class="nav-item"><a class="nav-link active" href="mis-reservas.html">Mis reservas</a></li>
+          <li class="nav-item"><a class="nav-link" href="catalogo.html#contacto">Contacto</a></li>
+        </ul>
+        <a class="btn btn-dark rounded-pill px-3" href="catalogo.html#catalogo"><i class="bi bi-bag me-1"></i> Mi reserva</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+      <div><h1 class="h3 fw-bold mb-1">Mis reservas</h1><p class="text-secondary mb-0">Hola, <strong id="nombreCliente"></strong></p></div>
+      <button class="btn btn-outline-dark rounded-pill px-3" id="cerrarSesion"><i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión</button>
+    </div>
+    <div class="alert alert-light border small" role="note"><i class="bi bi-info-circle me-1"></i><span id="textoPolitica"></span></div>
+    <div id="listaReservas"></div>
+  </main>
+
+  <div class="modal fade" id="modalResena" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header"><h2 class="modal-title h5">Calificar: <span id="resenaJuego"></span></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+      <div class="modal-body">
+        <label class="form-label" for="resenaEstrellas">Calificación</label>
+        <select class="form-select mb-3" id="resenaEstrellas"><option value="5">5 - Excelente</option><option value="4">4 - Muy bueno</option><option value="3">3 - Bueno</option><option value="2">2 - Regular</option><option value="1">1 - Malo</option></select>
+        <label class="form-label" for="resenaComentario">Comentario (opcional)</label>
+        <textarea class="form-control" id="resenaComentario" rows="3" maxlength="500"></textarea>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary" id="enviarResena">Publicar reseña</button></div>
+    </div></div>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="appToast" class="toast" role="status" aria-live="polite" aria-atomic="true"><div class="toast-body d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i><span id="toastMensaje">Aviso</span></div></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/src/reservas.ts"></script>
+</body>
+</html>

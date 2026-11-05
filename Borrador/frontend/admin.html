@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administración | JuegaYa</title>
+  <style>
+    :root {
+      --brand: #6c4cff; --brand-dark: #4e35d8; --brand-tint: #ede9ff;
+      --ink: #17151f; --muted: #6d6a76; --surface: #f6f5fa; --line: #e7e4ef;
+      --lime: #d9ff63; --danger: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--ink);
+           font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+    header { background: var(--ink); color: #fff; }
+    .barra { max-width: 62rem; margin: 0 auto; padding: 1rem 1.25rem 0; }
+    .marca { display: flex; align-items: baseline; gap: .6rem; }
+    .marca h1 { margin: 0; font-size: 1.25rem; letter-spacing: -.02em; }
+    .marca span { color: #a19eb0; font-size: .85rem; }
+    nav { display: flex; gap: .25rem; margin-top: .9rem; overflow-x: auto; }
+    nav button { background: none; border: 0; border-bottom: 3px solid transparent; color: #c9c6d3;
+                 padding: .6rem .9rem; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    nav button:hover { color: #fff; }
+    nav button[aria-selected="true"] { color: #fff; border-bottom-color: var(--lime); }
+
+    main { max-width: 62rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    h2 { margin: 0; font-size: 1.5rem; letter-spacing: -.03em; }
+    .cabecera { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 1.25rem; }
+    .cabecera p { margin: .15rem 0 0; color: var(--muted); }
+
+    button.btn, select.btn { font: inherit; font-weight: 600; border-radius: .55rem; padding: .5rem .9rem; cursor: pointer;
+                             border: 1px solid var(--line); background: #fff; color: var(--ink); }
+    .btn:hover { border-color: var(--brand); }
+    .btn.primario { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn.primario:hover { background: var(--brand-dark); }
+    .btn.peligro { color: var(--danger); }
+    .btn.chico { padding: .3rem .65rem; font-size: .85rem; }
+
+    .indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); background: #fff;
+                   border: 1px solid var(--line); border-radius: .8rem; }
+    .indicador { padding: 1.1rem 1.25rem; border-left: 1px solid var(--line); }
+    .indicador:first-child { border-left: 0; }
+    .indicador strong { display: block; font-size: 1.85rem; letter-spacing: -.04em; line-height: 1.1; }
+    .indicador span { color: var(--muted); font-size: .85rem; }
+
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: .8rem; overflow: hidden; }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .8rem; color: var(--muted); font-weight: 600; padding: .7rem 1rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    td { padding: .75rem 1rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .sec { display: block; color: var(--muted); font-size: .82rem; }
+    .acciones { text-align: right; white-space: nowrap; }
+    .acciones .btn + .btn { margin-left: .3rem; }
+    .vacio { padding: 2.5rem 1rem; text-align: center; color: var(--muted); }
+
+    .chip { display: inline-block; padding: .15rem .6rem; border-radius: 2rem; font-size: .8rem; font-weight: 600; }
+    .chip.ok { background: #dcfce7; color: #166534; }
+    .chip.off { background: #eeecf3; color: #4b4858; }
+
+    .filtros { display: flex; gap: .6rem; margin-bottom: 1rem; }
+    .filtros select { min-width: 12rem; }
+
+    dialog { border: 0; border-radius: .9rem; padding: 0; width: min(30rem, 92vw); box-shadow: 0 20px 60px rgba(23, 21, 31, .35); }
+    dialog::backdrop { background: rgba(23, 21, 31, .5); }
+    dialog form { padding: 1.5rem; display: grid; gap: 1rem; }
+    dialog h3 { margin: 0; font-size: 1.2rem; }
+    label { display: grid; gap: .3rem; font-weight: 600; font-size: .85rem; }
+    input, select, textarea { font: inherit; font-weight: 400; padding: .55rem .7rem; border: 1px solid #cfcbdb; border-radius: .5rem; width: 100%; background: #fff; }
+    label.check { display: flex; align-items: center; gap: .5rem; font-weight: 400; font-size: .95rem; }
+    label.check input { width: auto; }
+    .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .pie-dialog { display: flex; justify-content: flex-end; gap: .6rem; }
+    .ayuda { color: var(--muted); font-size: .82rem; font-weight: 400; }
+
+    .respaldo { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+    .respaldo p { margin: 0 auto 0 0; color: var(--muted); font-size: .85rem; max-width: 34rem; }
+
+    #aviso { position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); background: var(--ink); color: #fff;
+             padding: .65rem 1.1rem; border-radius: .6rem; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    #aviso.visible { opacity: 1; }
+
+    @media (max-width: 40rem) {
+      .indicador { border-left: 0; border-top: 1px solid var(--line); }
+      .indicador:first-child { border-top: 0; }
+      .fila2 { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { #aviso { transition: none; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="barra">
+    <div class="marca"><h1>JuegaYa</h1><span>Administración</span></div>
+    <nav role="tablist" aria-label="Secciones">
+      <button role="tab" data-vista="resumen" aria-selected="true">Resumen</button>
+      <button role="tab" data-vista="juegos" aria-selected="false">Juegos</button>
+      <button role="tab" data-vista="reservas" aria-selected="false">Reservas</button>
+    </nav>
+  </div>
+</header>
+
+<main id="contenido"></main>
+
+<!-- Formulario de juego -->
+<dialog id="dlgJuego" aria-labelledby="dlgJuegoTitulo">
+  <form id="formJuego" method="dialog">
+    <h3 id="dlgJuegoTitulo">Nuevo juego</h3>
+    <input type="hidden" id="jId">
+    <label>Nombre <input id="jNombre" required maxlength="60"></label>
+    <div class="fila2">
+      <label>Categoría
+        <select id="jCategoria">
+          <option value="Inflable">Inflable</option>
+          <option value="Acuático">Acuático</option>
+          <option value="Interior">Interior</option>
+        </select>
+      </label>
+      <label>Precio por jornada (CLP)
+        <input id="jPrecio" type="number" min="1" step="1" required>
+        <span class="ayuda">Una jornada son 6 horas.</span>
+      </label>
+    </div>
+    <label>Descripción <textarea id="jDescripcion" rows="2" maxlength="200"></textarea></label>
+    <label class="check"><input type="checkbox" id="jActivo" checked> Visible para los clientes</label>
+    <div class="pie-dialog">
+      <button type="button" class="btn" data-cerrar>Cancelar</button>
+      <button type="submit" class="btn primario">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Formulario de reserva -->
+<dialog id="dlgReserva" aria-labelledby="dlgReservaTitulo">
+  <form id="formReserva" method="dialog">
+    <h3 id="dlgReservaTitulo">Nueva reserva</h3>
+    <div class="fila2">
+      <label>Cliente <input id="rCliente" required maxlength="60"></label>
+      <label>Teléfono <input id="rTelefono" type="tel" required maxlength="20"></label>
+    </div>
+    <label>Juego <select id="rJuego" required></select></label>
+    <div class="fila2">
+      <label>Fecha del evento <input id="rFecha" type="date" required></label>
+      <label>Horas (1 a 6) <input id="rHoras" type="number" min="1" max="6" value="6" required></label>
+    </div>
+    <p class="ayuda" id="rTotal" style="margin:0"></p>
+    <div class="pie-dialog">
+      <button type="button" class="btn" data-cerrar>Cancelar</button>
+      <button type="submit" class="btn primario">Crear reserva</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="aviso" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/src/admin.ts"></script>
+</body>
+</html>

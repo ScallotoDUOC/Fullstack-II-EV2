@@ -1,0 +1,88 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # Los servicios tambien responden CORS; sin esto el navegador recibe la cabecera duplicada y rechaza la respuesta.
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+          routes:
+            # ---- API (lo que consume el frontend) ----
+            - id: pedidos
+              uri: ${PEDIDOS_URL:http://localhost:8081}
+              predicates:
+                - Path=/pedidos/**
+            - id: pagos
+              uri: ${PAGOS_URL:http://localhost:8082}
+              predicates:
+                - Path=/pagos/**
+            - id: catalogo
+              uri: ${CATALOGO_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/catalogo/**
+            - id: usuarios
+              uri: ${USUARIOS_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/auth/**
+
+            # ---- Documentacion OpenAPI de cada servicio (para el Swagger unificado) ----
+            # /docs/pedidos/v3/api-docs  ->  (servicio pedidos) /v3/api-docs
+            - id: docs-pedidos
+              uri: ${PEDIDOS_URL:http://localhost:8081}
+              predicates:
+                - Path=/docs/pedidos/**
+              filters:
+                - RewritePath=/docs/pedidos/(?<segment>.*), /$\{segment}
+            - id: docs-pagos
+              uri: ${PAGOS_URL:http://localhost:8082}
+              predicates:
+                - Path=/docs/pagos/**
+              filters:
+                - RewritePath=/docs/pagos/(?<segment>.*), /$\{segment}
+            - id: docs-catalogo
+              uri: ${CATALOGO_URL:http://localhost:8083}
+              predicates:
+                - Path=/docs/catalogo/**
+              filters:
+                - RewritePath=/docs/catalogo/(?<segment>.*), /$\{segment}
+            - id: docs-usuarios
+              uri: ${USUARIOS_URL:http://localhost:8084}
+              predicates:
+                - Path=/docs/usuarios/**
+              filters:
+                - RewritePath=/docs/usuarios/(?<segment>.*), /$\{segment}
+          # CORS abierto para desarrollo. En produccion limita los origenes.
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: "*"
+                allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
+                allowedHeaders: "*"
+
+# Swagger UI unificado: http://localhost:8080/swagger-ui.html
+springdoc:
+  swagger-ui:
+    urls:
+      - name: Catalogo
+        url: /docs/catalogo/v3/api-docs
+      - name: Usuarios
+        url: /docs/usuarios/v3/api-docs
+      - name: Pedidos
+        url: /docs/pedidos/v3/api-docs
+      - name: Pagos
+        url: /docs/pagos/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+logging:
+  level:
+    juegaYa.Gateway: INFO
