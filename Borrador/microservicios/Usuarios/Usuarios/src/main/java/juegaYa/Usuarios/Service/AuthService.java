@@ -10,6 +10,7 @@ import juegaYa.Usuarios.Model.Favorito;
 import juegaYa.Usuarios.Repository.FavoritoRepository;
 import juegaYa.Usuarios.Repository.SesionRepository;
 import juegaYa.Usuarios.Repository.UsuarioRepository;
+import juegaYa.Usuarios.Security.JwtUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +32,11 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final SesionRepository sesionRepository;
     private final FavoritoRepository favoritoRepository;
+    private final JwtUtil jwtUtil;
 
     public AuthService(UsuarioRepository usuarioRepository, SesionRepository sesionRepository,
-                       FavoritoRepository favoritoRepository) {
+                       FavoritoRepository favoritoRepository, JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
         this.usuarioRepository = usuarioRepository;
         this.sesionRepository = sesionRepository;
         this.favoritoRepository = favoritoRepository;
@@ -106,13 +109,24 @@ public class AuthService {
     }
 
     /**
-     * Cierra la sesión del token con un solo UPDATE atómico. Es idempotente: si el token no existe
-     * o ya estaba cerrado, no hace nada ni lanza error.
+     * Emite el JWT de una sesión recién abierta: sub = id del usuario, rol, jti = token de la sesión
+     * (así al cerrar sesión se puede revocar) y exp = vencimiento de la sesión.
      */
+    @Transactional(readOnly = true)
+    public String emitirJwt(Sesion sesion) {
+        Usuario usuario = usuarioRepository.findById(sesion.getUsuarioId())
+                .orElseThrow(() -> new AutenticacionException("La cuenta ya no está disponible"));
+        long iat = java.time.Instant.now().getEpochSecond();
+        long exp = sesion.getExpiraEn().atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+        return jwtUtil.generar(String.valueOf(usuario.getId()), usuario.getRol().name(), sesion.getToken(), iat, exp);
+    }
+
+    /** Cierra la sesión asociada al token. Lanza AutenticacionException si el token no existe. */
     @Transactional
     public void cerrarSesion(String token) {
-        if (token == null || token.isBlank()) return;
-        sesionRepository.cerrar(token, java.time.LocalDateTime.now());
+        Sesion sesion = buscarSesion(token);
+        sesion.cerrar();
+        sesionRepository.save(sesion);
     }
 
     /** Devuelve el usuario dueño del token, siempre que la sesión siga vigente y la cuenta activa. */
@@ -131,8 +145,19 @@ public class AuthService {
         if (token == null || token.isBlank()) {
             throw new AutenticacionException("Falta el token de sesión");
         }
-        return sesionRepository.findById(token)
+        // 1) el JWT debe tener firma válida y no estar vencido; 2) su jti debe ser una sesión abierta (revocación)
+        JwtUtil.Claims claims;
+        try {
+            claims = jwtUtil.verificar(token);
+        } catch (JwtUtil.JwtException e) {
+            throw new AutenticacionException("Token inválido: " + e.getMessage());
+        }
+        Sesion sesion = sesionRepository.findById(claims.jti())
                 .orElseThrow(() -> new AutenticacionException("Token de sesión inválido"));
+        if (!String.valueOf(sesion.getUsuarioId()).equals(claims.sub())) {
+            throw new AutenticacionException("Token de sesión inválido");
+        }
+        return sesion;
     }
 
     /** Lista de usuarios con sus datos (nombre, RUT...). Solo la puede pedir un administrador. */

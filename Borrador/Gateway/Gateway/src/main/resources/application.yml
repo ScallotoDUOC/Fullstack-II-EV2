@@ -8,11 +8,8 @@ spring:
     gateway:
       server:
         webflux:
-          # Los servicios tambien responden CORS; sin esto el navegador recibe la cabecera duplicada y rechaza la respuesta.
-          default-filters:
-            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
           routes:
-            # ---- API (lo que consume el frontend) ----
+            # ---- APIs ----
             - id: pedidos
               uri: ${PEDIDOS_URL:http://localhost:8081}
               predicates:
@@ -31,32 +28,35 @@ spring:
                 - Path=/api/auth/**
 
             # ---- Documentacion OpenAPI de cada servicio (para el Swagger unificado) ----
-            # /docs/pedidos/v3/api-docs  ->  (servicio pedidos) /v3/api-docs
-            - id: docs-pedidos
+            # /docs/<servicio>/v3/api-docs  ->  <servicio>/v3/api-docs
+            - id: pedidos-docs
               uri: ${PEDIDOS_URL:http://localhost:8081}
               predicates:
                 - Path=/docs/pedidos/**
               filters:
                 - RewritePath=/docs/pedidos/(?<segment>.*), /$\{segment}
-            - id: docs-pagos
+            - id: pagos-docs
               uri: ${PAGOS_URL:http://localhost:8082}
               predicates:
                 - Path=/docs/pagos/**
               filters:
                 - RewritePath=/docs/pagos/(?<segment>.*), /$\{segment}
-            - id: docs-catalogo
+            - id: catalogo-docs
               uri: ${CATALOGO_URL:http://localhost:8083}
               predicates:
                 - Path=/docs/catalogo/**
               filters:
                 - RewritePath=/docs/catalogo/(?<segment>.*), /$\{segment}
-            - id: docs-usuarios
+            - id: usuarios-docs
               uri: ${USUARIOS_URL:http://localhost:8084}
               predicates:
                 - Path=/docs/usuarios/**
               filters:
                 - RewritePath=/docs/usuarios/(?<segment>.*), /$\{segment}
+
           # CORS abierto para desarrollo. En produccion limita los origenes.
+          # Ojo: CORS se maneja SOLO aca. Si un microservicio tambien lo activa,
+          # llegan headers Access-Control-* duplicados y el navegador rechaza la respuesta.
           globalcors:
             cors-configurations:
               '[/**]':
@@ -68,14 +68,18 @@ spring:
 springdoc:
   swagger-ui:
     urls:
-      - name: Catalogo
-        url: /docs/catalogo/v3/api-docs
-      - name: Usuarios
-        url: /docs/usuarios/v3/api-docs
       - name: Pedidos
         url: /docs/pedidos/v3/api-docs
       - name: Pagos
         url: /docs/pagos/v3/api-docs
+      - name: Catalogo
+        url: /docs/catalogo/v3/api-docs
+      - name: Usuarios
+        url: /docs/usuarios/v3/api-docs
+
+# Secreto JWT: debe ser IGUAL al de Usuarios (variable de entorno JWT_SECRET en produccion)
+jwt:
+  secret: ${JWT_SECRET:juegaya-clave-de-desarrollo-cambiala-en-produccion-2026}
 
 management:
   endpoints:
@@ -86,3 +90,6 @@ management:
 logging:
   level:
     juegaYa.Gateway: INFO
+    # Si algo falla, descomenta para ver a donde esta enviando el gateway cada peticion:
+    # org.springframework.cloud.gateway: DEBUG
+    # reactor.netty.http.client: DEBUG

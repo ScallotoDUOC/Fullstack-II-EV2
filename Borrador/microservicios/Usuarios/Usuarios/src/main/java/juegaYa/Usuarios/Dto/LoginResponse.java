@@ -12,7 +12,8 @@ public record LoginResponse(
         UsuarioResponse usuario
 ) {
 
-    public static LoginResponse de(Sesion sesion, Usuario usuario) {
-        return new LoginResponse(sesion.getToken(), sesion.getExpiraEn(), UsuarioResponse.de(usuario));
+    /** El token que se devuelve es el JWT (no el id interno de la sesión). */
+    public static LoginResponse de(String jwt, Sesion sesion, Usuario usuario) {
+        return new LoginResponse(jwt, sesion.getExpiraEn(), UsuarioResponse.de(usuario));
     }
 }

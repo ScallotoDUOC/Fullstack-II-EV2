@@ -1,6 +1,6 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { apiUsuarios } from "../api/api";
+import { apiUsuarios, EVENTO_SESION_EXPIRADA } from "../api/api";
 import type { ApiPerfilDatos, ApiUsuario } from "../api/api";
 
 export interface Sesion {
@@ -34,22 +34,24 @@ const desdeUsuario = (u: ApiUsuario, token: string): Sesion => ({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sesion, setSesion] = useState<Sesion | null>(leer);
+  // si el JWT venció o fue rechazado (401), se limpia la sesión local y la interfaz vuelve a "sin sesión"
+  useEffect(() => {
+    const alExpirar = () => {
+      try { localStorage.removeItem(CLAVE); } catch { /* nada que borrar */ }
+      setSesion(null);
+    };
+    window.addEventListener(EVENTO_SESION_EXPIRADA, alExpirar);
+    return () => window.removeEventListener(EVENTO_SESION_EXPIRADA, alExpirar);
+  }, []);
   const aplicar = (s: Sesion) => { guardar(s); setSesion(s); return s; };
   const login = async (email: string, pass: string) => {
     const r = await apiUsuarios.login(email, pass);
     return aplicar(desdeUsuario(r.usuario, r.token));
   };
-  // Cierra la sesión local AL INSTANTE (la interfaz no se queda esperando al servidor) y avisa al servidor
-  // en segundo plano. Si ya hay un cierre en curso, los clics repetidos se ignoran.
-  const cerrando = useRef(false);
   const logout = async () => {
-    if (cerrando.current) return;
-    cerrando.current = true;
-    const token = sesion?.token;
+    try { if (sesion) await apiUsuarios.logout(sesion.token); } catch { /* token vencido: igual cierro */ }
     try { localStorage.removeItem(CLAVE); } catch { /* nada que borrar */ }
     setSesion(null);
-    if (token) apiUsuarios.logout(token).catch(() => { /* token vencido o servidor caído: la sesión local ya se cerró */ }).finally(() => { cerrando.current = false; });
-    else cerrando.current = false;
   };
   const actualizarPerfil = async (datos: ApiPerfilDatos) => {
     if (!sesion) throw new Error("Debes iniciar sesión");

@@ -39,11 +39,18 @@ export interface ApiPedido {
 export interface ApiEstadoPago { pedidoId: number; estado: string; pagoId: number; }
 export interface ApiPago { id: number; pedidoId: number; usuarioId: number; montoTotal: number; metodo: string; estado: string; referenciaExterna: string | null; }
 
+export const EVENTO_SESION_EXPIRADA = "juegaya-sesion-expirada";
+function tokenGuardado(): string | undefined {
+  try { return JSON.parse(localStorage.getItem("juegaya_sesion") || "null")?.token || undefined; } catch { return undefined; }
+}
+
 // ---- fetch con manejo de errores: lanza Error con un mensaje que se puede mostrar al usuario ----
 export async function apiFetch<T>(url: string, opciones: RequestInit = {}, token?: string): Promise<T> {
   const headers: Record<string, string> = { ...(opciones.headers as Record<string, string> || {}) };
   if (opciones.body) headers["Content-Type"] = "application/json";
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  // El gateway exige el JWT en casi todo (admin, pedidos, pagos...): si la llamada no trae token, uso el de la sesión guardada
+  const tokenFinal = token || tokenGuardado();
+  if (tokenFinal) headers["Authorization"] = `Bearer ${tokenFinal}`;
 
   let respuesta: Response;
   try {
@@ -53,6 +60,8 @@ export async function apiFetch<T>(url: string, opciones: RequestInit = {}, token
     throw new Error("No se pudo conectar con el servidor. ¿Están encendidos los microservicios?");
   }
   if (!respuesta.ok) {
+    // 401 con token enviado = JWT vencido, alterado o sesión cerrada: aviso para que AuthProvider cierre la sesión local
+    if (respuesta.status === 401 && tokenFinal) window.dispatchEvent(new Event(EVENTO_SESION_EXPIRADA));
     let mensaje = `Error ${respuesta.status}`;
     try {
       const cuerpo = await respuesta.json();

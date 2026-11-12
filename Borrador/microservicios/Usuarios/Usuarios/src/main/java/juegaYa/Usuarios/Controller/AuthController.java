@@ -53,8 +53,9 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse iniciarSesion(@Valid @RequestBody LoginDto dto) {
         Sesion sesion = authService.iniciarSesion(dto.email(), dto.password());
-        Usuario usuario = authService.validarToken(sesion.getToken());
-        return LoginResponse.de(sesion, usuario);
+        String jwt = authService.emitirJwt(sesion);
+        Usuario usuario = authService.validarToken(jwt);
+        return LoginResponse.de(jwt, sesion, usuario);
     }
 
     /** POST /api/auth/logout con "Authorization: Bearer <token>" -> 204. */
