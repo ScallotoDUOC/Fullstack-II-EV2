@@ -6,6 +6,7 @@ import type { ApiPedido } from "../api/api";
 import { useAuth } from "../context/Auth";
 import { useAviso } from "../context/Toast";
 import { clp } from "../utils";
+import { errorDireccion, errorNombre, errorTelefono, errorTextoLibre, LIMITES, soloDigitos } from "../validaciones";
 
 export default function DetalleCompra() {
   const [params] = useSearchParams();
@@ -20,7 +21,7 @@ export default function DetalleCompra() {
   const [errorCarga, setErrorCarga] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviada, setEnviada] = useState(false);
-  const [f, setF] = useState({ nombre: sesion?.nombre || "", telefono: "", direccion: "", indicaciones: "" });
+  const [f, setF] = useState({ nombre: sesion?.nombre || "", telefono: sesion?.telefono || "", direccion: sesion?.direccion || "", indicaciones: "" });
   const [metodo, setMetodo] = useState<"TRANSFERENCIA" | "TARJETA">("TRANSFERENCIA");
 
   useEffect(() => {
@@ -30,17 +31,29 @@ export default function DetalleCompra() {
       .catch(e => setErrorCarga((e as Error).message));
   }, [pedidoId]);
 
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: k === "telefono" ? soloDigitos(e.target.value, LIMITES.telefono) : e.target.value });
 
   const confirmar = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!pedido || !sesion || !formRef.current?.reportValidity()) return;
+    const problema = errorNombre(f.nombre) || errorTelefono(f.telefono, true) || errorDireccion(f.direccion, true) || errorTextoLibre(f.indicaciones, LIMITES.indicaciones, "Las indicaciones");
+    if (problema) { aviso(problema); return; }
     setEnviando(true);
     try {
+      // 1) bloqueo las fechas primero: si alguien ya reservó ese juego ese día, el Catálogo responde 409 y no se confirma nada
+      const bloqueados: string[] = [];
+      try {
+        for (const i of pedido.items) { await apiCatalogo.bloquear(i.juegoId, i.fechaEvento, pedido.id); bloqueados.push(i.juegoId); }
+      } catch (err) {
+        if (bloqueados.length) { try { await apiCatalogo.liberar(pedido.id); } catch { /* nada que liberar */ } }
+        throw new Error(`${(err as Error).message}. Elige otra fecha u otro juego.`);
+      }
       const direccion = comuna ? `${f.direccion.trim()}, ${comuna}` : f.direccion.trim();
-      const confirmado = await apiPedidos.confirmar(pedido.id, { nombre: f.nombre.trim(), telefono: f.telefono.trim(), direccion, indicaciones: f.indicaciones.trim() });
-      const pago = await apiPagos.iniciar(pedido.id, sesion.usuarioId, confirmado.total, metodo);
-      for (const i of confirmado.items) await apiCatalogo.bloquear(i.juegoId, i.fechaEvento, pedido.id);
+      let confirmado: ApiPedido, pago;
+      try {
+        confirmado = await apiPedidos.confirmar(pedido.id, { nombre: f.nombre.trim(), telefono: f.telefono.trim(), direccion, indicaciones: f.indicaciones.trim() });
+        pago = await apiPagos.iniciar(pedido.id, sesion.usuarioId, confirmado.total, metodo);
+      } catch (err) { try { await apiCatalogo.liberar(pedido.id); } catch { /* nada que liberar */ } throw err; }
       setEnviada(true);
       aviso(`Reserva ${confirmado.codigo} enviada. Pago #${pago.id} (${metodo.toLowerCase()}) pendiente de confirmación`);
       setTimeout(() => nav("/mis-reservas"), 1800);
@@ -73,11 +86,11 @@ export default function DetalleCompra() {
                 <h2 className="h5 fw-bold mb-3">Datos de entrega</h2>
                 <form ref={formRef} onSubmit={confirmar}>
                   <div className="row g-3">
-                    <div className="col-md-6"><label htmlFor="nombreEntrega" className="form-label">Nombre completo</label><input type="text" className="form-control" id="nombreEntrega" required value={f.nombre} onChange={set("nombre")} /></div>
-                    <div className="col-md-6"><label htmlFor="telefonoEntrega" className="form-label">Teléfono de contacto</label><input type="tel" className="form-control" id="telefonoEntrega" required value={f.telefono} onChange={set("telefono")} /></div>
-                    <div className="col-12"><label htmlFor="direccionEntrega" className="form-label">Dirección</label><input type="text" className="form-control" id="direccionEntrega" placeholder="Calle, número, depto/casa" required value={f.direccion} onChange={set("direccion")} /></div>
+                    <div className="col-md-6"><label htmlFor="nombreEntrega" className="form-label">Nombre completo</label><input type="text" className="form-control" id="nombreEntrega" required maxLength={LIMITES.nombre} value={f.nombre} onChange={set("nombre")} /></div>
+                    <div className="col-md-6"><label htmlFor="telefonoEntrega" className="form-label">Teléfono de contacto</label><input type="tel" inputMode="numeric" className="form-control" id="telefonoEntrega" required maxLength={LIMITES.telefono} placeholder="912345678" value={f.telefono} onChange={set("telefono")} /></div>
+                    <div className="col-12"><label htmlFor="direccionEntrega" className="form-label">Dirección</label><input type="text" className="form-control" id="direccionEntrega" placeholder="Calle, número, depto/casa" required maxLength={LIMITES.direccion} value={f.direccion} onChange={set("direccion")} /></div>
                     <div className="col-md-6"><label htmlFor="fechaEntrega" className="form-label">Fecha del evento</label><input type="date" className="form-control" id="fechaEntrega" readOnly value={pedido?.items[0]?.fechaEvento || ""} /></div>
-                    <div className="col-12"><label htmlFor="indicacionesEntrega" className="form-label">Indicaciones adicionales (opcional)</label><textarea className="form-control" id="indicacionesEntrega" rows={2} placeholder="Ej: acceso por estacionamiento, portón lateral, etc." value={f.indicaciones} onChange={set("indicaciones")} /></div>
+                    <div className="col-12"><label htmlFor="indicacionesEntrega" className="form-label">Indicaciones adicionales (opcional)</label><textarea className="form-control" id="indicacionesEntrega" rows={2} maxLength={LIMITES.indicaciones} placeholder="Ej: acceso por estacionamiento, portón lateral, etc." value={f.indicaciones} onChange={set("indicaciones")} /></div>
                   </div>
                 </form>
               </div>

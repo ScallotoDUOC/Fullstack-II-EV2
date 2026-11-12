@@ -14,7 +14,7 @@ const API_POR_DEFECTO: ApiUrls = { usuarios: GATEWAY, catalogo: GATEWAY, pedidos
 export const API_URLS: ApiUrls = API_POR_DEFECTO;
 
 // ---- tipos tal cual los devuelven los microservicios ----
-export type ApiCategoria = "INFLABLE" | "ACUATICO" | "INTERIOR";
+export type ApiCategoria = "INFLABLE" | "ACUATICO" | "INTERIOR" | "EXTERIOR";
 
 export interface ApiResena { id?: number; juegoId: string; usuarioId: number; autor: string; estrellas: number; comentario: string; fecha: string; }
 export interface ApiBloqueo { id?: number; juegoId: string; fecha: string; motivo: string; reservaId: number | null; }
@@ -27,7 +27,8 @@ export interface ApiJuegoDatos {
   nombre: string; categoria: ApiCategoria; precioJornada: number;
   descripcion?: string; imagenUrl?: string; capacidad?: string; activo: boolean;
 }
-export interface ApiUsuario { id: number; nombre: string; email: string; rol: "CLIENTE" | "ADMINISTRADOR"; fechaRegistro: string; }
+export interface ApiUsuario { id: number; nombre: string; email: string; rut: string | null; telefono: string | null; direccion: string | null; rol: "CLIENTE" | "ADMINISTRADOR"; fechaRegistro: string; }
+export interface ApiPerfilDatos { nombre: string; telefono: string; direccion: string; rut?: string; }
 export interface ApiLogin { token: string; expiraEn: string; usuario: ApiUsuario; }
 export interface ApiItemPedido { juegoId: string; fechaEvento: string; horas: number; precioHora: number; subtotal: number; estado: string; }
 export interface ApiPedido {
@@ -66,8 +67,17 @@ export async function apiFetch<T>(url: string, opciones: RequestInit = {}, token
 
 // ---- Usuarios ----
 export const apiUsuarios = {
-  registrar: (nombre: string, email: string, password: string) =>
-    apiFetch<ApiUsuario>(`${API_URLS.usuarios}/api/auth/registro`, { method: "POST", body: JSON.stringify({ nombre, email, password }) }),
+  registrar: (nombre: string, email: string, password: string, rut: string) =>
+    apiFetch<ApiUsuario>(`${API_URLS.usuarios}/api/auth/registro`, { method: "POST", body: JSON.stringify({ nombre, email, password, rut }) }),
+  favoritos: (token: string) => apiFetch<string[]>(`${API_URLS.usuarios}/api/auth/favoritos`, {}, token),
+  agregarFavorito: (token: string, juegoId: string) =>
+    apiFetch<void>(`${API_URLS.usuarios}/api/auth/favoritos/${encodeURIComponent(juegoId)}`, { method: "PUT" }, token),
+  quitarFavorito: (token: string, juegoId: string) =>
+    apiFetch<void>(`${API_URLS.usuarios}/api/auth/favoritos/${encodeURIComponent(juegoId)}`, { method: "DELETE" }, token),
+  listar: (token: string) => apiFetch<ApiUsuario[]>(`${API_URLS.usuarios}/api/auth/usuarios`, {}, token),
+  yo: (token: string) => apiFetch<ApiUsuario>(`${API_URLS.usuarios}/api/auth/me`, {}, token),
+  actualizarPerfil: (token: string, datos: ApiPerfilDatos) =>
+    apiFetch<ApiUsuario>(`${API_URLS.usuarios}/api/auth/me`, { method: "PUT", body: JSON.stringify(datos) }, token),
   login: (email: string, password: string) =>
     apiFetch<ApiLogin>(`${API_URLS.usuarios}/api/auth/login`, { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: (token: string) =>
@@ -83,8 +93,12 @@ export const apiCatalogo = {
   crear: (d: ApiJuegoDatos) => apiFetch<ApiJuego>(`${API_URLS.catalogo}/api/catalogo`, { method: "POST", body: JSON.stringify(d) }),
   editar: (id: string, d: ApiJuegoDatos) => apiFetch<ApiJuego>(`${API_URLS.catalogo}/api/catalogo/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(d) }),
   eliminar: (id: string) => apiFetch<void>(`${API_URLS.catalogo}/api/catalogo/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  bloquear: (id: string, fechaISO: string, reservaId: number) =>
-    apiFetch<ApiBloqueo>(`${API_URLS.catalogo}/api/catalogo/${encodeURIComponent(id)}/bloqueos?fecha=${encodeURIComponent(fechaISO)}&reservaId=${reservaId}`, { method: "POST" }),
+  // sin reservaId el bloqueo queda como MANUAL (lo hace el administrador); con reservaId queda ligado a esa reserva
+  bloquear: (id: string, fechaISO: string, reservaId?: number) =>
+    apiFetch<ApiBloqueo>(`${API_URLS.catalogo}/api/catalogo/${encodeURIComponent(id)}/bloqueos?fecha=${encodeURIComponent(fechaISO)}${reservaId !== undefined ? `&reservaId=${reservaId}` : ""}`, { method: "POST" }),
+  // quita los bloqueos manuales (no los de reserva) de un juego en una fecha
+  desbloquear: (id: string, fechaISO: string) =>
+    apiFetch<void>(`${API_URLS.catalogo}/api/catalogo/${encodeURIComponent(id)}/bloqueos?fecha=${encodeURIComponent(fechaISO)}`, { method: "DELETE" }),
   resenar: (juegoId: string, r: { usuarioId: number; autor: string; estrellas: number; comentario: string }) =>
     apiFetch<ApiResena>(`${API_URLS.catalogo}/api/catalogo/${encodeURIComponent(juegoId)}/resenas`, { method: "POST", body: JSON.stringify(r) }),
   liberar: (reservaId: number) =>

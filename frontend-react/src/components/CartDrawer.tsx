@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { apiPedidos } from "../api/api";
+import { apiCatalogo, apiPedidos } from "../api/api";
 import { useAuth } from "../context/Auth";
 import { useCart } from "../context/Cart";
 import { useAviso } from "../context/Toast";
@@ -29,6 +29,10 @@ export default function CartDrawer() {
     if (!c.fecha || !c.comuna) { aviso('Primero elige la fecha y la comuna en "Buscar disponibilidad"'); c.setAbierto(false); nav("/catalogo"); return; }
     setEnviando(true);
     try {
+      // el sistema no deja reservar un juego en una fecha ocupada
+      const libres = new Set((await apiCatalogo.disponibles(c.fecha)).map(j => j.id));
+      const ocupados = c.items.filter(i => !libres.has(i.id));
+      if (ocupados.length) { aviso(`${ocupados.map(i => i.nombre).join(", ")}: no está disponible el ${c.fecha}. Quítalo o cambia la fecha.`); return; }
       const pedido = await apiPedidos.crear(sesion.usuarioId);
       for (const i of c.items) await apiPedidos.agregarItem(pedido.id, { juegoId: i.id, fechaEvento: c.fecha, horas: i.horas, precioHora: i.precioHora });
       const comuna = c.comuna;

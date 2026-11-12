@@ -24,11 +24,11 @@ import java.util.Objects;
 /**
  * Cuenta de una persona en JuegaYa (cliente o administrador).
  *
- * Sobre la contraseña: el atributo {//@code password} del diagrama NO guarda la
+ * Sobre la contraseña: el atributo {@code password} del diagrama NO guarda la
  * contraseña en texto plano, sino un hash PBKDF2 con sal, en formato
  * "iteraciones:sal:hash" (todo en Base64). Para generarlo se usa
- * {//@link #hashearPassword(String)} - el AuthService lo llama en registrar() - y
- * {//@link #verificarPassword(String)} compara contra ese hash. Se hizo con las
+ * {@link #hashearPassword(String)} - el AuthService lo llama en registrar() - y
+ * {@link #verificarPassword(String)} compara contra ese hash. Se hizo con las
  * clases que trae el JDK para no depender de ninguna librería extra; si más
  * adelante agregan Spring Security, se puede cambiar por BCrypt tocando solo
  * estos dos métodos.
@@ -58,6 +58,14 @@ public class Usuario {
     @Email
     @Column(unique = true, nullable = false)
     private String email;
+
+    /** RUT normalizado ("12345678-5", sin puntos): identificador único del cliente. Null solo en cuentas antiguas. */
+    @Column(unique = true, length = 12)
+    private String rut;
+
+    private String telefono;
+
+    private String direccion;
 
     /** Hash de la contraseña (nunca el texto plano). Ver {@link #hashearPassword(String)}. */
     @NotBlank
@@ -153,6 +161,30 @@ public class Usuario {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getRut() {
+        return rut;
+    }
+
+    public void setRut(String rut) {
+        this.rut = rut;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
+    }
+
+    public String getDireccion() {
+        return direccion;
+    }
+
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
     }
 
     public String getPassword() {

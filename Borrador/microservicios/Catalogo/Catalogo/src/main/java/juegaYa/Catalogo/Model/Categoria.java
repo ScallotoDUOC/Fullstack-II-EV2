@@ -1,4 +1,5 @@
 package juegaYa.Catalogo.Model;
+
 /**
  * Categorías en las que se puede clasificar un juego del catálogo.
  * Definida en el diagrama como enumeración asociada a Juego.
@@ -6,5 +7,6 @@ package juegaYa.Catalogo.Model;
 public enum Categoria {
     INFLABLE,
     ACUATICO,
-    INTERIOR
+    INTERIOR,
+    EXTERIOR
 }

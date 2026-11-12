@@ -1,0 +1,33 @@
+/* Ajustes de interfaz: pie de página al fondo y vista de celular (sin deslizar a los lados) */
+
+/* El pie de página siempre queda abajo: si la página es corta, el contenido se estira y no queda blanco debajo del footer */
+.app-shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.app-shell > main { flex: 1 0 auto; }
+.app-shell > footer { flex-shrink: 0; }
+
+@media (max-width: 767.98px) {
+  /* Las filas con g-4/g-5 sacaban 12 px de margen negativo fuera del contenedor y movían toda la página a los lados */
+  .row.g-4, .row.g-5, .row.gx-4, .row.gx-5 { --bs-gutter-x: 1.5rem; }
+
+  /* Los filtros del catálogo se acomodan en varias líneas en vez de un carril que se desliza */
+  .filter-pills { flex-wrap: wrap !important; overflow-x: visible !important; }
+  .filter-btn { flex: 0 1 auto !important; }
+
+  /* Tablas del panel: cada fila se convierte en una tarjeta con "Etiqueta: valor" (nada de scroll horizontal) */
+  table.tabla-apilable, table.tabla-apilable tbody { display: block; width: 100%; }
+  table.tabla-apilable thead { display: none; }
+  table.tabla-apilable tr { display: block; margin: .75rem; padding: .35rem .85rem; border: 1px solid var(--ui-border, #dfe2ea); border-radius: .75rem; background: #fff; }
+  table.tabla-apilable td { display: block; position: relative; min-height: 2rem; padding: .45rem 0 .45rem 42%; text-align: right; border: 0; border-bottom: 1px dashed var(--ui-border, #dfe2ea); overflow-wrap: anywhere; }
+  table.tabla-apilable td:last-child { border-bottom: 0; }
+  table.tabla-apilable td::before { content: attr(data-label); position: absolute; left: 0; top: .45rem; width: 38%; text-align: left; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--ui-muted-foreground, #5d6475); }
+  /* celdas sin etiqueta (botones de acciones): ancho completo, botones a la derecha y en varias líneas si hace falta */
+  table.tabla-apilable td[data-label=""] { padding-left: 0; white-space: normal; }
+  table.tabla-apilable td[data-label=""]::before { display: none; }
+  table.tabla-apilable td[data-label=""] > span { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; }
+  /* si no hay botones de acción (ej. reserva cancelada), no dejo una franja vacía */
+  table.tabla-apilable td[data-label=""]:empty, table.tabla-apilable td[data-label=""]:not(:has(button)) { display: none; }
+  table.tabla-apilable td select { margin-left: auto; }
+
+  /* ventanas modales y carrito aprovechan todo el ancho */
+  .modal-dialog { margin: .5rem; }
+}

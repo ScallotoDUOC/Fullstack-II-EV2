@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiCatalogo } from "../api/api";
+import { apiCatalogo, apiUsuarios } from "../api/api";
 import type { ApiJuego } from "../api/api";
+import { useAuth } from "../context/Auth";
 import { useCart } from "../context/Cart";
 import { useAviso } from "../context/Toast";
 import { clp, COMUNAS, deApiCat, hoyISO, precioHora } from "../utils";
@@ -9,15 +10,33 @@ import { clp, COMUNAS, deApiCat, hoyISO, precioHora } from "../utils";
 const iconoMeta = (t: string) =>
   /ni[ñn]os|jugador|persona|adulto|pax/i.test(t) ? "bi-people" : /×|\dx\d|\d\s?x\s?\d|metros|\bm\b/i.test(t) ? "bi-rulers" : /\bV\b|volt|watt|\bW\b/i.test(t) ? "bi-lightning-charge" : "bi-info-circle";
 const partesMeta = (cap: string | null) => (cap ? cap.split(/\s*[·|;/]\s*|,\s+/).map(s => s.trim()).filter(Boolean) : []);
-const CLAVE_FAV = "juegaya_favoritos";
 
 export default function Catalogo() {
   const [juegos, setJuegos] = useState<ApiJuego[]>([]);
   const [libres, setLibres] = useState<Set<string> | null>(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
-  const [favoritos, setFavoritos] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(CLAVE_FAV) || "[]"); } catch { return []; } });
-  const toggleFav = (id: string) => setFavoritos(p => { const n = p.includes(id) ? p.filter(x => x !== id) : [...p, id]; try { localStorage.setItem(CLAVE_FAV, JSON.stringify(n)); } catch { /* sin storage */ } return n; });
+  // Los favoritos se guardan en el servidor, ligados a la cuenta: cada perfil ve solo los suyos
+  const { sesion } = useAuth();
+  const token = sesion?.token;
+  const [favoritos, setFavoritos] = useState<string[]>([]);
+  useEffect(() => {
+    try { localStorage.removeItem("juegaya_favoritos"); } catch { /* clave antigua compartida entre perfiles: ya no se usa */ }
+    setFavoritos([]);
+    if (!token) return;
+    let vigente = true;
+    apiUsuarios.favoritos(token).then(f => { if (vigente) setFavoritos(f); }).catch(() => { /* sin conexión: se muestran vacíos */ });
+    return () => { vigente = false; };
+  }, [token]);
+  const toggleFav = (id: string) => {
+    if (!token) { aviso("Inicia sesión para guardar tus favoritos"); return; }
+    const era = favoritos.includes(id);
+    setFavoritos(p => (era ? p.filter(x => x !== id) : [...p, id]));
+    (era ? apiUsuarios.quitarFavorito(token, id) : apiUsuarios.agregarFavorito(token, id)).catch(e => {
+      setFavoritos(p => (era ? [...p, id] : p.filter(x => x !== id)));
+      aviso((e as Error).message);
+    });
+  };
   const [cat, setCat] = useState("");
   const [horas, setHoras] = useState<Record<string, number>>({});
   const carrito = useCart();
@@ -79,7 +98,7 @@ export default function Catalogo() {
               <p className="text-secondary mb-0">Precios referenciales por una jornada de hasta 6 horas.</p>
             </div>
             <div className="filter-pills" role="group" aria-label="Filtrar juegos por categoría">
-              {[["", "Todos"], ["Inflable", "Inflables"], ["Acuático", "Acuáticos"], ["Interior", "Interior"]].map(([v, t]) => (
+              {[["", "Todos"], ["Inflable", "Inflables"], ["Acuático", "Acuáticos"], ["Interior", "Interior"], ["Exterior", "Exterior"]].map(([v, t]) => (
                 <button key={t} type="button" className={`btn filter-btn${cat === v ? " active" : ""}`} onClick={() => setCat(v)}>{t}</button>))}
             </div>
           </div>
@@ -97,7 +116,7 @@ export default function Catalogo() {
                       <Link to={`/producto/${j.id}`} aria-label={`Ver detalle de ${j.nombre}`}>
                         {j.imagenUrl
                           ? <img src={j.imagenUrl} className="game-image" alt={j.nombre} loading="lazy" />
-                          : <><i className={`bi ${j.categoria === "INTERIOR" ? "bi-joystick" : "bi-controller"}`}></i><span>{deApiCat(j.categoria).toUpperCase()}</span></>}
+                          : <><i className={`bi ${j.categoria === "INTERIOR" ? "bi-joystick" : j.categoria === "EXTERIOR" ? "bi-tree" : "bi-controller"}`}></i><span>{deApiCat(j.categoria).toUpperCase()}</span></>}
                       </Link>
                       {ocupado
                         ? <span className="status-badge"><i className="bi bi-x-circle-fill" style={{ color: "#dc3545" }}></i> No disponible</span>

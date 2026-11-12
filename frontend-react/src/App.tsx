@@ -12,6 +12,7 @@ import CrearCuenta from "./pages/CrearCuenta";
 import DetalleCompra from "./pages/DetalleCompra";
 import MisReservas from "./pages/MisReservas";
 import Admin from "./pages/Admin";
+import Perfil from "./pages/Perfil";
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/crear-cuenta" element={<CrearCuenta />} />
           <Route path="/detalle-compra" element={<Protegida><DetalleCompra /></Protegida>} />
           <Route path="/mis-reservas" element={<Protegida><MisReservas /></Protegida>} />
+          <Route path="/perfil" element={<Protegida><Perfil /></Protegida>} />
           <Route path="/admin" element={<Protegida admin><Admin /></Protegida>} />
           <Route path="*" element={<main className="container py-5"><h1 className="h3">Página no encontrada</h1></main>} />
         </Route>

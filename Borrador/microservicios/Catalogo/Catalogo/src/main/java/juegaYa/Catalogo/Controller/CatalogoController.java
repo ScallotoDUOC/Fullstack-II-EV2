@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -45,11 +46,10 @@ public class CatalogoController {
             @RequestParam(required = false) Categoria categoria,
             @RequestParam(required = false) String texto,
             @RequestParam(required = false) Integer precioMin,
-            @RequestParam(required = false) Integer precioMax,
-            @RequestParam(defaultValue = "false") boolean incluirInactivos
+            @RequestParam(required = false) Integer precioMax
     ) {
         RangoPrecio rango = (precioMin == null && precioMax == null) ? null : new RangoPrecio(precioMin, precioMax);
-        return catalogoService.listar(categoria, texto, rango, incluirInactivos);
+        return catalogoService.listar(categoria, texto, rango);
     }
 
     /** GET /api/catalogo/disponibles?fecha=2026-10-20 */
@@ -102,6 +102,13 @@ public class CatalogoController {
     ) {
         BloqueoFecha creado = catalogoService.bloquear(id, fecha, reservaId);
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
+    }
+
+    /** DELETE /api/catalogo/{id}/bloqueos?fecha=2026-10-20 - quita el bloqueo manual de ese juego en esa fecha. */
+    @DeleteMapping("/{id}/bloqueos")
+    public ResponseEntity<Void> desbloquear(@PathVariable String id, @RequestParam LocalDate fecha) {
+        catalogoService.desbloquearFecha(id, fecha);
+        return ResponseEntity.noContent().build();
     }
 
     /** DELETE /api/catalogo/bloqueos/reserva/{reservaId} - libera todos los bloqueos de esa reserva. */

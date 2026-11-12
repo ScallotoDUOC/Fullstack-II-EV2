@@ -13,11 +13,14 @@ public record UsuarioResponse(
         Integer id,
         String nombre,
         String email,
+        String rut,
+        String telefono,
+        String direccion,
         Rol rol,
         LocalDateTime fechaRegistro
 ) {
 
     public static UsuarioResponse de(Usuario u) {
-        return new UsuarioResponse(u.getId(), u.getNombre(), u.getEmail(), u.getRol(), u.getFechaRegistro());
+        return new UsuarioResponse(u.getId(), u.getNombre(), u.getEmail(), u.getRut(), u.getTelefono(), u.getDireccion(), u.getRol(), u.getFechaRegistro());
     }
 }

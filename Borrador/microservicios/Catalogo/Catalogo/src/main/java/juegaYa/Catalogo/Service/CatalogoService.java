@@ -2,6 +2,7 @@ package juegaYa.Catalogo.Service;
 
 import juegaYa.Catalogo.Dto.JuegoDatos;
 import juegaYa.Catalogo.Dto.RangoPrecio;
+import juegaYa.Catalogo.Exception.ConflictoException;
 import juegaYa.Catalogo.Exception.RecursoNoEncontradoException;
 import juegaYa.Catalogo.Model.BloqueoFecha;
 import juegaYa.Catalogo.Model.Categoria;
@@ -56,16 +57,10 @@ public class CatalogoService {
      */
     @Transactional(readOnly = true)
     public List<Juego> listar(Categoria categoria, String texto, RangoPrecio rangoPrecio) {
-        return listar(categoria, texto, rangoPrecio, false);
-    }
-
-    /** Igual que el anterior; con incluirInactivos=true también trae los juegos ocultos (lo usa el panel admin). */
-    @Transactional(readOnly = true)
-    public List<Juego> listar(Categoria categoria, String texto, RangoPrecio rangoPrecio, boolean incluirInactivos) {
         String textoNormalizado = (texto == null) ? "" : texto.trim().toLowerCase(Locale.ROOT);
 
         return juegoRepository.findAll().stream()
-                .filter(j -> incluirInactivos || j.isActivo())
+                .filter(Juego::isActivo)
                 .filter(j -> categoria == null || categoria.equals(j.getCategoria()))
                 .filter(j -> textoNormalizado.isEmpty()
                         || j.getNombre().toLowerCase(Locale.ROOT).contains(textoNormalizado))
@@ -156,6 +151,10 @@ public class CatalogoService {
         if (!juegoRepository.existsById(juegoId)) {
             throw new RecursoNoEncontradoException("No existe un juego con id " + juegoId);
         }
+        // un juego no se puede reservar ni bloquear dos veces el mismo día
+        if (!bloqueoFechaRepository.findByJuegoIdAndFecha(juegoId, fecha).isEmpty()) {
+            throw new ConflictoException("El juego ya está ocupado el " + fecha);
+        }
         MotivoBloqueo motivo = (reservaId != null) ? MotivoBloqueo.RESERVA : MotivoBloqueo.MANUAL;
         BloqueoFecha bloqueo = new BloqueoFecha(juegoId, fecha, motivo, reservaId);
         return bloqueoFechaRepository.save(bloqueo);
@@ -170,6 +169,18 @@ public class CatalogoService {
     public void liberar(Integer reservaId) {
         List<BloqueoFecha> bloqueos = bloqueoFechaRepository.findByReservaId(reservaId);
         bloqueoFechaRepository.deleteAll(bloqueos);
+    }
+
+    /** Libera los bloqueos manuales o de mantención de un juego en una fecha (los de reserva se liberan con liberar(reservaId)). */
+    @Transactional
+    public void desbloquearFecha(String juegoId, LocalDate fecha) {
+        List<BloqueoFecha> manuales = bloqueoFechaRepository.findByJuegoIdAndFecha(juegoId, fecha).stream()
+                .filter(b -> b.getMotivo() != MotivoBloqueo.RESERVA)
+                .collect(Collectors.toList());
+        if (manuales.isEmpty()) {
+            throw new RecursoNoEncontradoException("No hay un bloqueo manual de " + juegoId + " el " + fecha);
+        }
+        bloqueoFechaRepository.deleteAll(manuales);
     }
 
     private Juego conResenas(Juego juego) {
